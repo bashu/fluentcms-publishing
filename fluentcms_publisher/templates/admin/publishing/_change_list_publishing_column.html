@@ -1,0 +1,7 @@
+{% load i18n static publishing_tags %}
+<div class="col-published">
+  <label class="published-icon">
+    <img src="{% static "admin/img/icon-yes.gif" %}"{% if not object.has_been_published %} style="display:none"{% endif %}>
+    <img src="{% static "admin/img/icon-no.gif" %}"{% if object.has_been_published %} style="display:none"{% endif %}>
+  </label>
+</div>

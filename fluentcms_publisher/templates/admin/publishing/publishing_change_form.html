@@ -1,0 +1,57 @@
+{% extends non_publishing_change_form_template %}
+
+{% load i18n admin_modify admin_static admin_urls publishing_tags %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  /* style publish links to look like other buttons */
+  .submit-row a.button {
+  margin: 0 0 0 5px;
+  padding: 3px 5px;
+  }
+  /* hide fluent's "status" field which is obsoleted (TODO: actually remove it from the form/model) */
+  fieldset .form-row.field-status {
+  display: none;
+  }
+</style>
+{% endblock %}
+	
+{% block submit_buttons_bottom %}
+  <div class="submit-row">
+    {% if has_publish_permission %}
+      {% if publish_btn %}
+        <a href="{{ publish_btn }}" class="button default">{% trans 'Publish' %}</a>
+      {% endif %}
+      {% if unpublish_btn %}
+        <a href="{{ unpublish_btn }}" class="button default">{% trans 'Unpublish' %}</a>
+      {% endif %}
+    {% else %}
+      <input type="submit" value="{% trans 'Save' %}" class="default" name="_save" />
+    {% endif %}
+    {% if not is_popup and change and has_delete_permission %}
+      {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+      <p class="deletelink-box"><a href="{% add_preserved_filters delete_url %}" class="deletelink">{% trans "Delete" %}</a></p>
+    {% endif %}
+    {% if not is_popup and change and save_as %}<input type="submit" value="{% trans 'Save as new' %}" name="_saveasnew" />{%endif%}
+    {% if not is_popup and has_add_permission %}{% if not save_as or add %}<input type="submit" value="{% trans 'Save and add another' %}" name="_addanother" />{% endif %}{% endif %}
+    {% if not is_popup and has_change_permission %}<input type="submit" value="{% trans 'Save and continue editing' %}" name="_continue" />{% endif %}
+    {% if has_publish_permission %}
+      <input type="submit" value="{% trans 'Save Draft' %}" class="default" name="_save" />
+    {% endif %}
+  </div>
+{% endblock %}
+  
+{% block object-tools-items %}
+<li>
+  {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
+  <a href="{% add_preserved_filters history_url %}" class="historylink">{% trans "History" %}</a>
+</li>
+{% with original.get_absolute_url as preview_url %}
+{% if preview_url and has_preview_permission %}
+<li><a href="{{ preview_url|get_draft_url }}" target="_blank" class="viewsitelink">{% trans "Preview draft" %}</a></li>
+{% endif %}
+{% endwith %}
+{% if has_absolute_url and has_been_published %}<li><a href="{{ absolute_url }}" target="_blank" class="viewsitelink">{% trans "View published" %}</a></li>{% endif %}
+{% endblock %}
+

@@ -1,5 +1,4 @@
-django
-django-model-publisher
+django>1.7,<1.9
 django-wysiwyg
 django-any-urlfield
 django-any-imagefield
@@ -10,6 +9,9 @@ django-tinymce
 docutils
 pillow
 south
+
+django-model-settings
+django-model-publisher
 
 pytz
 textile

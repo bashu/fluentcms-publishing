@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 
 PROJECT_APPS = [
     'fluentcms_publisher',
+    'fluentcms_publisher.pagetypes.fluentpage',
 ]
 
 INSTALLED_APPS = [
@@ -45,11 +46,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.admin',
 
+    'publisher',
+    'model_settings',
+    
     'fluent_pages',
-    'fluent_pages.pagetypes.flatpage',
-    'fluent_pages.pagetypes.fluentpage',
+    # 'fluent_pages.pagetypes.flatpage',
     # 'fluent_pages.pagetypes.redirectnode',  # upstream bug #110
-    'fluent_pages.pagetypes.textfile',
+    # 'fluent_pages.pagetypes.textfile',
 
     'mptt',
     'polymorphic',
@@ -101,6 +104,8 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'fluentcms_publisher.middleware.PublishingMiddleware',
 ]
 
 TEMPLATE_DIRS = (
@@ -166,6 +171,7 @@ STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
 STATIC_URL = '/static/'
 
 FLUENT_PAGES_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates', 'layouts')
+FLUENT_PAGES_PARENT_ADMIN_MIXIN = 'fluentcms_publisher.admin.FluentPagesParentAdminMixin'
 
 DJANGO_WYSIWYG_FLAVOR = "tinymce"
 

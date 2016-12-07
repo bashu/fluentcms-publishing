@@ -1,0 +1,9 @@
+include AUTHORS
+include README.rst
+include LICENSE
+recursive-include fluentcms_publisher/locale *
+recursive-include fluentcms_publisher/static *.css *.js
+recursive-include fluentcms_publisher/templates *.html
+recursive-include fluentcms_publisher/pagetypes/*/locale *
+recursive-include fluentcms_publisher/pagetypes/*/static *.css *.js
+recursive-include fluentcms_publisher/pagetypes/*/templates *.html

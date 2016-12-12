@@ -33,8 +33,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 PROJECT_APPS = [
-    'fluentcms_publisher',
-    'fluentcms_publisher.pagetypes.fluentpage',
+    'fluentcms_publishing',
+    'fluentcms_publishing.pagetypes.fluentpage',
 ]
 
 INSTALLED_APPS = [
@@ -105,7 +105,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    'fluentcms_publisher.middleware.PublishingMiddleware',
+    'fluentcms_publishing.middleware.PublishingMiddleware',
 ]
 
 TEMPLATE_DIRS = (
@@ -171,7 +171,7 @@ STATIC_ROOT = os.path.join(os.path.dirname(__file__), 'static')
 STATIC_URL = '/static/'
 
 FLUENT_PAGES_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates', 'layouts')
-FLUENT_PAGES_PARENT_ADMIN_MIXIN = 'fluentcms_publisher.admin.FluentPagesParentAdminMixin'
+FLUENT_PAGES_PARENT_ADMIN_MIXIN = 'fluentcms_publishing.admin.FluentPagesParentAdminMixin'
 
 DJANGO_WYSIWYG_FLAVOR = "tinymce"
 

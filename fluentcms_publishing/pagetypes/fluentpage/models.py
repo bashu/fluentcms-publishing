@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
-from fluentcms_publisher.models import PublishableFluentContentsPage
+from fluentcms_publishing.models import PublishableFluentContentsPage
 
 
 class AbstractFluentPage(PublishableFluentContentsPage):

@@ -1,14 +1,14 @@
-fluentcms-publisher
+fluentcms-publishing
 ===================
 
-.. image:: https://img.shields.io/pypi/v/fluentcms-publisher.svg
-    :target: https://pypi.python.org/pypi/fluentcms-publisher/
+.. image:: https://img.shields.io/pypi/v/fluentcms-publishing.svg
+    :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
-.. image:: https://img.shields.io/pypi/dm/fluentcms-publisher.svg
-    :target: https://pypi.python.org/pypi/fluentcms-publisher/
+.. image:: https://img.shields.io/pypi/dm/fluentcms-publishing.svg
+    :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
-.. image:: https://img.shields.io/github/license/bashu/fluentcms-publisher.svg
-    :target: https://pypi.python.org/pypi/fluentcms-publisher/
+.. image:: https://img.shields.io/github/license/bashu/fluentcms-publishing.svg
+    :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
 Contributing
 ------------

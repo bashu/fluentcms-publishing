@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 
 # When creating the sdist, make sure the django.mo file also exists:
 if 'sdist' in sys.argv or 'develop' in sys.argv:
-    os.chdir('fluentcms_publisher')
+    os.chdir('fluentcms_publishing')
     try:
         from django.core import management
         management.call_command('compilemessages', stdout=sys.stderr, verbosity=1)
@@ -35,8 +35,8 @@ def find_version(*parts):
 
 
 setup(
-    name='fluentcms-publisher',
-    version=find_version('fluentcms_publisher', '__init__.py'),
+    name='fluentcms-publishing',
+    version=find_version('fluentcms_publishing', '__init__.py'),
     license='MIT License',
 
     install_requires=[
@@ -53,8 +53,8 @@ setup(
     author='Basil Shubin',
     author_email='basil.shubin@gmail.com',
 
-    url='https://github.com/bashu/fluentcms-publisher',
-    download_url='https://github.com/bashu/fluentcms-publisher/zipball/master',
+    url='https://github.com/bashu/fluentcms-publishing',
+    download_url='https://github.com/bashu/fluentcms-publishing/zipball/master',
 
     packages=find_packages(exclude=('example*',)),
     include_package_data=True,

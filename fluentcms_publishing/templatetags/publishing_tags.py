@@ -1,6 +1,6 @@
 from django import template
 
-from fluentcms_publisher import utils
+from fluentcms_publishing import utils
 
 register = template.Library()
 

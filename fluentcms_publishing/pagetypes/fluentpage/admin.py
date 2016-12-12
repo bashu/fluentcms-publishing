@@ -12,7 +12,7 @@ from fluent_utils.ajax import JsonResponse
 
 from fluent_pages.pagetypes.fluentpage.widgets import LayoutSelector
 
-from fluentcms_publisher.admin import PublishingAdmin
+from fluentcms_publishing.admin import PublishingAdmin
 
 
 class FluentPageAdminForm(PageAdminForm):

@@ -19,6 +19,8 @@ from django.template import loader, Context
 from fluent_pages.models.db import UrlNode
 from fluent_pages.adminui.pageadmin import _select_template_name
 from fluent_pages.adminui.urlnodeparentadmin import UrlNodeParentAdmin
+from fluent_contents.admin import PlaceholderEditorAdmin
+from fluent_contents.models import PlaceholderData
 
 from .models import PublishingModel
 
@@ -718,3 +720,11 @@ class FluentPagesParentAdminMixin(
         PublishingFluentPagesParentAdminMixin, UrlNodeParentAdmin):
     """ Add publishing features for FluentPage parent admin (listing) pages """
     list_filter = (PublishingStatusFilter, PublishingPublishedFilter)
+
+
+class PublishableFluentContentsAdmin(PublishingAdmin, PlaceholderEditorAdmin):
+    """
+    Add publishing admin features for models with Fluent Contents features
+    """
+    def get_placeholder_data(self, request, obj):
+        return [PlaceholderData(slot='main', role='m', title='Main')]

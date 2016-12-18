@@ -10,6 +10,7 @@ from django.utils import timezone
 from fluent_contents.models import Placeholder
 from fluent_pages.models import UrlNode
 from fluent_pages.integration.fluent_contents import FluentContentsPage
+from fluent_contents.models import ContentItemRelation, PlaceholderRelation
 
 from .managers import PublishingManager, PublishingUrlNodeManager
 from .middleware import is_draft_request_context
@@ -642,6 +643,22 @@ class PublishableFluentContentsPage(FluentContentsPage, PublishingModel):
 
     class Meta:
         abstract = True
+
+
+class PublishableFluentContents(PublishingModel):
+
+    contentitem_set = ContentItemRelation()
+    placeholder_set = PlaceholderRelation()
+
+    class Meta:
+        abstract = True
+
+    def placeholders(self):
+        # return a dict of placeholders, organised by slot, for access in
+        # templates use `page.placeholders.<slot_name>.get_content_items` to
+        # test if a placeholder has any items.
+        return dict([(p.slot, p)
+                     for p in self.placeholder_set.all().select_related()])
 
 
 @receiver(publishing_signals.publishing_publish_save_draft)

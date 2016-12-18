@@ -35,6 +35,7 @@ ALLOWED_HOSTS = []
 PROJECT_APPS = [
     'fluentcms_publishing',
     'fluentcms_publishing.pagetypes.fluentpage',
+    'fluentcms_publishing.pagetypes.redirectnode',
 ]
 
 INSTALLED_APPS = [
@@ -51,7 +52,6 @@ INSTALLED_APPS = [
     
     'fluent_pages',
     # 'fluent_pages.pagetypes.flatpage',
-    # 'fluent_pages.pagetypes.redirectnode',  # upstream bug #110
     # 'fluent_pages.pagetypes.textfile',
 
     'mptt',

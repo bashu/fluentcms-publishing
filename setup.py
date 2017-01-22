@@ -40,10 +40,6 @@ setup(
     license='MIT License',
 
     install_requires=[
-        'django-polymorphic==0.9.2',
-        'django-fluent-contents',
-        'django-fluent-pages',
-
         'django-model-publisher>=0.1.4',
         'django-model-settings',
     ],

@@ -1,5 +1,12 @@
 from django.conf.urls import include, patterns, url
 
-urlpatterns = patterns('',
+from django.contrib import admin
+admin.autodiscover()
+
+urlpatterns = [
+    url(r'^admin/', include(admin.site.urls)),
+]
+
+urlpatterns += [
     url(r'', include('fluent_pages.urls')),
-)
+]

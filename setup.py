@@ -60,6 +60,8 @@ setup(
     include_package_data=True,
 
     tests_require=[
+        'mock',
+        'django-webtest',
         'django-setuptest',
         'django-dynamic-fixture',
     ],

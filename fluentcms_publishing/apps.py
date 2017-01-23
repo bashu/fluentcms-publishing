@@ -76,6 +76,12 @@ class AppConfig(AppConfig):
             return
         AppConfig.has_run_ready = True
 
+        from fluent_pages.templatetags.fluent_pages_tags import register
+        if 'render_menu' in register.tags:
+            del register.tags['render_menu']
+        if 'render_breadcrumb' in register.tags:
+            del register.tags['render_breadcrumb']
+
         monkey_patches.APPLY_patch_urlnodeadminform_clean_for_publishable_items()
         monkey_patches.APPLY_patch_django_17_collector_collect()
         monkey_patches.APPLY_patch_django_18_get_candidate_relations_to_delete()

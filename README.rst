@@ -10,6 +10,9 @@ fluentcms-publishing
 .. image:: https://img.shields.io/github/license/bashu/fluentcms-publishing.svg
     :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
+.. image:: https://img.shields.io/travis/bashu/fluentcms-publishing.svg
+    :target: https://travis-ci.org/bashu/fluentcms-publishing/
+
 Contributing
 ------------
 

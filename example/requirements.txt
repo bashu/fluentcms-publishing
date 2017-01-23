@@ -10,8 +10,8 @@ docutils
 pillow
 south
 
-django-model-settings
 django-model-publisher
+django-model-settings
 
 pytz
 textile

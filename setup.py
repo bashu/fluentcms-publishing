@@ -59,6 +59,14 @@ setup(
     packages=find_packages(exclude=('example*',)),
     include_package_data=True,
 
+    tests_require=[
+        'mock',
+        'django-webtest',
+        'django-setuptest',
+        'django-dynamic-fixture',
+    ],
+    test_suite='setuptest.setuptest.SetupTestSuite',
+
     zip_safe=False,
     classifiers=[
         'Development Status :: 4 - Beta',

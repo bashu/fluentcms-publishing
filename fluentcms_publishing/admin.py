@@ -721,6 +721,35 @@ class FluentPagesParentAdminMixin(
     """ Add publishing features for FluentPage parent admin (listing) pages """
     list_filter = (PublishingStatusFilter, PublishingPublishedFilter)
 
+    def get_action_icons(self, node):
+        from parler.templatetags.parler_tags import get_translated_url
+
+        if issubclass(node.get_real_instance_class(), PublishingModel):
+            node = node.get_real_instance()
+
+        actions = []
+        if self.can_have_children(node):
+            actions.append(
+                """<a href="add/?{parent_attr}={id}" title="{title}" class="add-child-object"><img src="{static}polymorphic_tree/icons/page_new.gif" width="16" height="16" alt="{title}" /></a>""".format(parent_attr=self.model._mptt_meta.parent_attr, id=node.pk, title=_('Add sub node'), static=settings.STATIC_URL))
+        else:
+            actions.append(self.EMPTY_ACTION_ICON.format(STATIC_URL=settings.STATIC_URL, css_class='add-child-object'))
+
+        if hasattr(node, 'publishing_linked'):
+            if node.publishing_linked:
+                temp_url = get_translated_url(
+                    dict(request=self.request),
+                    self.get_form_language(self.request, node),
+                    node.publishing_linked,
+                )
+                actions.append(
+                    """<a href="{url}" title="{title}" target="_blank"><img src="{static}polymorphic_tree/icons/world.gif" width="16" height="16" alt="{title}" /></a>""".format(url=temp_url, title=_('View on site'), static=settings.STATIC_URL))
+
+        # The is_first_sibling and is_last_sibling is quite heavy. Instead rely on CSS to hide the arrows.
+        move_up = u'<a href="{0}/move_up/" class="move-up">\u2191</a>'.format(node.pk)
+        move_down = u'<a href="{0}/move_down/" class="move-down">\u2193</a>'.format(node.pk)
+        actions.append(u'<span class="no-js">{0}{1}</span>'.format(move_up, move_down))
+        return actions
+
 
 class PublishableFluentContentsAdmin(PublishingAdmin, PlaceholderEditorAdmin):
     """

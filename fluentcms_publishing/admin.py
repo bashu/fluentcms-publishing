@@ -9,6 +9,7 @@ from django.conf import settings
 from django.conf.urls import patterns, url
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse, NoReverseMatch
+from django.db import transaction
 from django.db.models import F
 from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.utils.encoding import force_text
@@ -471,6 +472,7 @@ class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
 
         return publish_urls + urls
 
+    @transaction.atomic
     def get_model_object(self, request, object_id):
         # Enforce DB-level locking of the object with `select_for_update` to
         # avoid data consistency issues caused by multiple simultaneous form

@@ -5,6 +5,7 @@ import django
 from django import forms
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin, SimpleListFilter
+from django.contrib.admin.utils import quote
 from django.conf import settings
 from django.conf.urls import patterns, url
 from django.core.exceptions import PermissionDenied
@@ -691,6 +692,22 @@ class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
             pass
         for q in qs:
             q.unpublish()
+
+    def response_change(self, request, obj):
+        pk_value = obj._get_pk_val()
+
+        if "_publish" in request.POST:
+            return HttpResponseRedirect(
+                reverse(self.publish_reverse(type(obj)),
+                        args=[quote(pk_value)],
+                        current_app=self.admin_site.name))
+        if "_unpublish" in request.POST:
+            return HttpResponseRedirect(
+                reverse(self.unpublish_reverse(type(obj)),
+                        args=[quote(pk_value)],
+                        current_app=self.admin_site.name))
+
+        return super(PublishingAdmin, self).response_change(request, obj)
 
 
 class PublishingFluentPagesParentAdminMixin(_PublishingHelpersMixin):

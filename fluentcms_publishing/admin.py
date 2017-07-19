@@ -203,7 +203,10 @@ class PublishingAdminForm(forms.ModelForm):
         instance = self.instance
 
         # work out which fields are unique_together
-        unique_fields_set = instance.get_unique_together()
+        try:
+            unique_fields_set = instance.get_unique_together()
+        except AttributeError:
+            unique_fields_set = ()
 
         if not unique_fields_set:
             return data

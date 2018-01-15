@@ -5,26 +5,6 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.utils.datastructures import OrderedSet
 from django.utils.translation import get_language
 
-from fluent_pages import appsettings
-from fluent_pages.models import UrlNode
-from fluent_pages.models.managers import UrlNodeQuerySet
-
-from polymorphic.models import PolymorphicModel
-
-from mptt.models import MPTTModel
-
-from . import monkey_patches
-from .managers import (
-    PublishingQuerySet,
-    PublishingPolymorphicManager, 
-    PublishingUrlNodeManager,
-    UrlNodeQuerySetWithPublishingFeatures, 
-    _queryset_iterator,
-)
-from .models import PublishingModel
-from .middleware import is_draft_request_context, \
-    override_draft_request_context
-
 
 def monkey_patch_override_method(klass):
     """
@@ -76,7 +56,25 @@ class AppConfig(AppConfig):
             return
         AppConfig.has_run_ready = True
 
+        from fluent_pages import appsettings
+        from fluent_pages.models import UrlNode
+        from fluent_pages.models.managers import UrlNodeQuerySet
         from fluent_pages.templatetags.fluent_pages_tags import register
+        
+        from polymorphic.models import PolymorphicModel
+
+        from mptt.models import MPTTModel
+
+        from . import monkey_patches
+        from .managers import (
+            PublishingQuerySet,
+            PublishingPolymorphicManager, 
+            PublishingUrlNodeManager,
+            UrlNodeQuerySetWithPublishingFeatures, 
+            _queryset_iterator,
+        )
+        from .models import PublishingModel
+
         if 'render_menu' in register.tags:
             del register.tags['render_menu']
         if 'render_breadcrumb' in register.tags:
@@ -93,6 +91,8 @@ class AppConfig(AppConfig):
         # other cases like when a specially "signed" draft URL is shared.
         @monkey_patch_override_method(UrlNodeQuerySet)
         def published(self, for_user=None):
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             if for_user is not None and is_draft_request_context():
                 return self._single_site()
             else:
@@ -148,6 +148,8 @@ class AppConfig(AppConfig):
                 enforce_single_result=False)
 
         def _filter_candidates_by_published_status(candidates):
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             # Filter candidate results by published status, using
             # instance attributes instead of queryset filtering to
             # handle unpublishable and ICEKit publishing-enabled items.
@@ -194,6 +196,8 @@ class AppConfig(AppConfig):
             Raise `MultipleObjectsReturned` if the list contains multiple
             objects and the `enforce_single_result` argument is set.
             """
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             request_context_desc = \
                 'published' if is_draft_request_context() else 'draft'
             # Check for invalid multiple results if requested

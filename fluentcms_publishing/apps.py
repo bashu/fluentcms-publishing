@@ -1,5 +1,6 @@
 import warnings
 
+import django
 from django.apps import AppConfig, apps
 from django.core.exceptions import MultipleObjectsReturned
 from django.utils.datastructures import OrderedSet
@@ -82,7 +83,8 @@ class AppConfig(AppConfig):
 
         monkey_patches.APPLY_patch_urlnodeadminform_clean_for_publishable_items()
         monkey_patches.APPLY_patch_django_17_collector_collect()
-        monkey_patches.APPLY_patch_django_18_get_candidate_relations_to_delete()
+        if not django.VERSION >= (1, 10):
+            monkey_patches.APPLY_patch_django_18_get_candidate_relations_to_delete()
 
         # Monkey-patch `UrlNodeQuerySet.published` to avoid filtering out draft
         # items when we are in a draft request context when the special-case
@@ -307,11 +309,17 @@ class AppConfig(AppConfig):
                     and not issubclass(model, UrlNode):
 
                 _contribute_if_not_subclass('objects', PublishingPolymorphicManager)
-                _contribute_if_not_subclass('_default_manager', PublishingPolymorphicManager)
+                if django.VERSION >= (1, 10):
+                    model._meta.default_manager_name = 'objects'
+                else:
+                    _contribute_if_not_subclass('_default_manager', PublishingPolymorphicManager)
 
             if issubclass(model, UrlNode):
                 _contribute_if_not_subclass('objects', PublishingUrlNodeManager)
-                _contribute_if_not_subclass('_default_manager', PublishingUrlNodeManager)
+                if django.VERSION >= (1, 10):
+                    model._meta.default_manager_name = 'objects'
+                else:
+                    _contribute_if_not_subclass('_default_manager', PublishingUrlNodeManager)
 
                 @monkey_patch_override_method(model)
                 def _make_slug_unique(self, translation):

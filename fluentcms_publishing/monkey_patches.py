@@ -15,6 +15,8 @@ from django.utils.translation import gettext_lazy as _
 from fluent_pages.adminui.urlnodechildadmin import UrlNodeAdminForm
 from fluent_pages.models import UrlNode, UrlNode_Translation
 
+from .compat import get_all_related_objects
+
 
 def patch_urlnodeadminform_clean_for_publishable_items(self):
     # Store original cleaned data from superclass of UrlNodeAdminForm, which
@@ -25,7 +27,13 @@ def patch_urlnodeadminform_clean_for_publishable_items(self):
     cleaned_data = self._original_clean()
 
     # This patch is only necessary for admins of publishable items.
-    if 'publishing_linked' not in self._meta.model._meta.get_all_field_names():
+    try:
+        # Django 1.8+
+        field_names = [f.name for f in self._meta.model._meta.get_fields()]
+    except AttributeError:
+        # Django < 1.8
+        field_names = self._meta.model._meta.get_all_field_names()
+    if 'publishing_linked' not in field_names:
         return cleaned_data
 
     # If a duplicate slug error is reported, make sure it is *really*
@@ -137,8 +145,8 @@ def patch_django_17_collector_collect(self, objs, *args, **kwargs):
     for model in [o._meta.model for o in objs]:
         for proxy_ancestor_cls in get_proxy_ancestor_classes(model):
             opts = proxy_ancestor_cls._meta
-            for rel_obj in opts.get_all_related_objects(
-                    local_only=True, include_hidden=True):
+            for rel_obj in get_all_related_objects(
+                    opts, local_only=True, include_hidden=True):
                 rel = rel_obj.field.rel
                 if not rel:
                     continue

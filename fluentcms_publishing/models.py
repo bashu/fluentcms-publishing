@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import django
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -15,6 +16,7 @@ from fluent_contents.models import ContentItemRelation, PlaceholderRelation
 from .managers import PublishingManager, PublishingUrlNodeManager
 from .middleware import is_draft_request_context
 from .utils import PublishingException, assert_draft
+from .compat import get_m2m_with_model, get_all_related_many_to_many_objects
 from . import signals as publishing_signals
 
 
@@ -23,7 +25,8 @@ class PublishingModel(models.Model):
     Model fields and features to implement publishing.
     """
     objects = PublishingManager()
-    _default_manager = PublishingManager()
+    if not django.VERSION >= (1, 10):
+        _default_manager = PublishingManager()
 
     publishing_linked = models.OneToOneField(
         'self',
@@ -59,6 +62,8 @@ class PublishingModel(models.Model):
 
     class Meta:
         abstract = True
+        if django.VERSION >= (1, 10):
+            default_manager_name = 'objects'
         permissions = (
             ('can_publish', 'Can publish'),
         )
@@ -216,8 +221,13 @@ class PublishingModel(models.Model):
             obj = self
 
         placeholder_fields = []
-        model_fields = obj.__class__._meta.get_all_field_names()
-        for field in model_fields:
+        try:
+            # Django 1.8+
+            field_names = [f.name for f in obj.__class__._meta.get_fields()]
+        except AttributeError:
+            # Django < 1.8
+            field_names = obj.__class__._meta.get_all_field_names()
+        for field in field_names:
             if field in self.publishing_ignore_fields:
                 continue
 
@@ -493,7 +503,7 @@ class PublishingModel(models.Model):
             seen_rel_through_tables.add(field.rel.through)
 
         # Reverse.
-        for field in src_obj._meta.get_all_related_many_to_many_objects():
+        for field in get_all_related_many_to_many_objects(src_obj._meta):
             # Skip reverse relationship we have already seen
             if field.field.rel.through in seen_rel_through_tables:
                 continue
@@ -588,7 +598,7 @@ class PublishingModel(models.Model):
             return
         for src_ci, dst_ci in zip(self.contentitem_set.all(),
                                   dst_obj.contentitem_set.all()):
-            for field, __ in src_ci._meta.get_m2m_with_model():
+            for field, __ in get_m2m_with_model(src_ci):
                 field_name = field.name
                 src_m2m = getattr(src_ci, field_name)
                 dst_m2m = getattr(dst_ci, field_name)
@@ -621,7 +631,8 @@ class PublishableFluentContentsPage(FluentContentsPage, PublishingModel):
     """
     # TODO Default managers don't apply properly in all cases, not sure why...
     objects = PublishingUrlNodeManager()
-    _default_manager = PublishingUrlNodeManager()
+    if not django.VERSION >= (1, 10):
+        _default_manager = PublishingUrlNodeManager()
 
     # TODO Must re-implement property here, not sure why...
     @property
@@ -643,6 +654,8 @@ class PublishableFluentContentsPage(FluentContentsPage, PublishingModel):
 
     class Meta:
         abstract = True
+        if django.VERSION >= (1, 10):
+            default_manager_name = 'objects'
 
 
 class PublishableFluentContents(PublishingModel):
@@ -704,7 +717,7 @@ def handle_publishable_m2m_changed(
     # Get the right `ManyRelatedManager`. Iterate M2Ms and compare `sender`
     # (the through model), in case there are multiple M2Ms to the same model.
     if reverse:
-        for rel_obj in instance._meta.get_all_related_many_to_many_objects():
+        for rel_obj in get_all_related_many_to_many_objects(instance._meta):
             if rel_obj.field.rel.through == sender:
                 m2m = getattr(instance, rel_obj.get_accessor_name())
                 break

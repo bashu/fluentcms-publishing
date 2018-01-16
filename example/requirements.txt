@@ -1,4 +1,5 @@
-django>1.7,<1.10
+django>1.7,<1.11
+django-mptt>=0.8.6
 django-polymorphic==1.2
 django-wysiwyg
 django-any-urlfield
@@ -10,8 +11,9 @@ docutils
 pillow
 south
 
+# TODO: replace with upstream version
+git+https://github.com/sigmacms/django-model-settings.git@develop
 django-model-publisher
-django-model-settings
 
 pytz
 textile

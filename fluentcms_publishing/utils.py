@@ -4,8 +4,10 @@ except ImportError:
     from urllib import parse as urlparse
 
 from django.apps import apps
+from django.conf import settings
 from django.http import QueryDict
 from django.contrib.contenttypes.models import ContentType
+from django.shortcuts import get_object_or_404, _get_queryset
 from django.utils.crypto import get_random_string, salted_hmac
 from django.utils.encoding import force_bytes
 
@@ -94,6 +96,34 @@ def verify_draft_url(url):
     except (KeyError, ValueError):
         return False
     return hmac == get_draft_hmac(salt, url.path)
+
+
+def get_visible_object_or_404(klass, *args, **kwargs):
+    """
+    Convenience replacement for `get_object_or_404` that automatically finds
+    and returns only the *visible* copy of publishable items, or raises
+    `Http404` if a visible copy is not available even when a draft copy is
+    available.
+    """
+    qs = _get_queryset(klass)
+    # If class is publishable, find only *visible* objects
+    try:
+        qs = qs.visible()
+    except AttributeError:
+        pass  # Ignore error calling `visible()` on unpublishable class
+    return get_object_or_404(qs, *args, **kwargs)
+
+
+def is_automatic_publishing_enabled(klass):
+    auto_publish_setting = getattr(
+        settings, 'FLUENTCMS_PUBLISHING_ENABLE_AUTO_PUBLISH', False)
+    if auto_publish_setting is True:
+        return True
+    if isinstance(auto_publish_setting, (list, tuple)):
+        klass_dotpath = '.'.join([klass.__module__, klass.__name__])
+        if klass_dotpath in auto_publish_setting:
+            return True
+    return False
 
 
 def create_content_instance(content_plugin_class, page, placeholder_name='main', **kwargs):

@@ -376,7 +376,10 @@ class _PublishingHelpersMixin(object):
                     self.unpublish_reverse(type(obj)), args=(obj.pk, ))
         except NoReverseMatch:
             pass
-        return t.render(c)
+        if django.VERSION >= (1, 10):
+            return t.render(c.flatten())
+        else:
+            return t.render(c)
     publishing_column.allow_tags = True
     publishing_column.short_description = _('Published')
 

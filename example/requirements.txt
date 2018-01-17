@@ -11,7 +11,8 @@ docutils
 pillow
 south
 
-django-model-settings>=0.3
+# TODO: replace with upstream version
+git+https://github.com/ixc/django-model-settings.git
 django-model-publisher>=0.1.5
 
 pytz

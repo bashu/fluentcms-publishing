@@ -1,7 +1,5 @@
 from django import template
 
-from fluentcms_publishing import utils
-
 register = template.Library()
 
 
@@ -10,4 +8,6 @@ def get_draft_url(url):
     """
     Return the given URL with a draft mode HMAC in its querystring.
     """
-    return utils.get_draft_url(url)
+    from fluentcms_publishing.utils import get_draft_url
+
+    return get_draft_url(url)

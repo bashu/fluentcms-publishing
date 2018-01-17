@@ -4,14 +4,23 @@ fluentcms-publishing
 .. image:: https://img.shields.io/pypi/v/fluentcms-publishing.svg
     :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
-.. image:: https://img.shields.io/pypi/dm/fluentcms-publishing.svg
-    :target: https://pypi.python.org/pypi/fluentcms-publishing/
-
 .. image:: https://img.shields.io/github/license/bashu/fluentcms-publishing.svg
     :target: https://pypi.python.org/pypi/fluentcms-publishing/
 
 .. image:: https://img.shields.io/travis/bashu/fluentcms-publishing.svg
     :target: https://travis-ci.org/bashu/fluentcms-publishing/
+
+Installation
+============
+
+First install the module, preferably in a virtual environment. It can be installed from PyPI:
+
+.. code-block:: shell
+
+    pip install fluentcms-publishing
+
+Backend Configuration
+---------------------
 
 Contributing
 ------------

@@ -1,7 +1,12 @@
+import django
 from django.db import models
 from django.db.models.query import QuerySet
 from django.db.models.query_utils import Q
 from django.utils.timezone import now
+try:
+    from django.db.models.query import BaseIterable, ModelIterable
+except ImportError:
+    BaseIterable = object
 
 from polymorphic.manager import PolymorphicManager
 from polymorphic.query import PolymorphicQuerySet
@@ -221,8 +226,7 @@ def _queryset_iterator(qs):
     else:
         super_without_boobytrap_iterator = super(PublishingQuerySet, qs)
 
-    if is_publishing_middleware_active() \
-            and not is_draft_request_context():
+    if is_publishing_middleware_active() and not is_draft_request_context():
         for item in super_without_boobytrap_iterator.iterator():
             if getattr(item, 'publishing_is_draft', False):
                 yield DraftItemBoobyTrap(item)
@@ -233,6 +237,22 @@ def _queryset_iterator(qs):
             yield item
 
 
+class PublishingIterable(BaseIterable):
+
+    def __iter__(self):
+        queryset = self.queryset
+        iter = ModelIterable(queryset)
+        if is_publishing_middleware_active() and not is_draft_request_context():
+            for item in iter:
+                if getattr(item, 'publishing_is_draft', False):
+                    yield DraftItemBoobyTrap(item)
+                else:
+                    yield item
+        else:
+            for item in iter:
+                yield item
+
+
 class PublishingQuerySet(QuerySet):
     """
     Base publishing queryset features, without UrlNode customisations.
@@ -241,6 +261,11 @@ class PublishingQuerySet(QuerySet):
     # performance penalties. This class attribute exists to be enabled only
     # where it is really necessary: on relationship querysets.
     exchange_on_published = False
+
+    def __init__(self, *args, **kwargs):
+        super(PublishingQuerySet, self).__init__(*args, **kwargs)
+        if django.VERSION > (1, 8):
+            self._iterable_class = PublishingIterable
 
     def visible(self):
         return _queryset_visible(self)

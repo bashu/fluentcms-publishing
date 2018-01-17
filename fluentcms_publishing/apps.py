@@ -68,6 +68,7 @@ class AppConfig(AppConfig):
 
         from . import monkey_patches
         from .managers import (
+            PublishingIterable,
             PublishingQuerySet,
             PublishingPolymorphicManager, 
             PublishingUrlNodeManager,
@@ -268,6 +269,8 @@ class AppConfig(AppConfig):
                     # queryset's implementation of `published()` is used
                     descriptor.related_manager_cls.published = \
                         lambda self, **kwargs: self.all().published(**kwargs)
+                    if django.VERSION > (1, 8):
+                        qs_class._iterable_class = PublishingIterable
 
             # Skip any models that don't have publishing features
             if not issubclass(model, PublishingModel):

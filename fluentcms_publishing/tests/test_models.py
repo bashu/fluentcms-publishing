@@ -547,7 +547,7 @@ class TestPublishableFluentContentsPage(TestCase):
             list(Page.objects.published()))
         # Confirm we only get published items regardless of
         # `is_draft_request_context`
-        with patch('fluentcms_publishing.apps.is_draft_request_context') as p:
+        with patch('fluentcms_publishing.middleware.is_draft_request_context') as p:
             p.return_value = True
             self.assertEqual(
                 [self.page.publishing_linked],

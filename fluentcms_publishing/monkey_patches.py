@@ -15,6 +15,8 @@ from django.utils.translation import gettext_lazy as _
 from fluent_pages.adminui.urlnodechildadmin import UrlNodeAdminForm
 from fluent_pages.models import UrlNode, UrlNode_Translation
 
+from .compat import get_all_related_objects
+
 
 def patch_urlnodeadminform_clean_for_publishable_items(self):
     # Store original cleaned data from superclass of UrlNodeAdminForm, which
@@ -25,8 +27,20 @@ def patch_urlnodeadminform_clean_for_publishable_items(self):
     cleaned_data = self._original_clean()
 
     # This patch is only necessary for admins of publishable items.
-    if 'publishing_linked' not in self._meta.model._meta.get_all_field_names():
+    try:
+        # Django 1.8+
+        field_names = [f.name for f in self._meta.model._meta.get_fields()]
+    except AttributeError:
+        # Django < 1.8
+        field_names = self._meta.model._meta.get_all_field_names()
+    if 'publishing_linked' not in field_names:
         return cleaned_data
+
+    other_translations = UrlNode_Translation.objects.all()
+
+    # Ignore other translations without a `master`, which we cannot reason
+    # about in any way and are most likely just orphaned bad data.
+    other_translations = other_translations.exclude(master=None)
 
     # If a duplicate slug error is reported, make sure it is *really*
     # a duplicate slug instead of just a slug value shared between the
@@ -37,7 +51,6 @@ def patch_urlnodeadminform_clean_for_publishable_items(self):
     ])
     if self._errors.get('slug') == duplicate_slug_error:
         # Get other node translations and parent for item
-        other_translations = UrlNode_Translation.objects.all()
         if self.instance and self.instance.id:
             other_translations = other_translations.exclude(
                 master_id=self.instance.id)
@@ -64,6 +77,27 @@ def patch_urlnodeadminform_clean_for_publishable_items(self):
         if not real_url_clash_qs.count():
             del self._errors['slug']
             cleaned_data['slug'] = original_cleaned_data['slug']
+
+    # If a duplicate `override_url` error is reporteed, make sure it is
+    # *really* a duplicate instead of a value shared between the published and
+    # draft versions of a publishable item. If not, ignore the error.
+    duplicate_override_url_error = self.error_class([
+        _('This URL is already taken by an other page.')])
+    if self._errors.get('override_url') == duplicate_override_url_error:
+        new_url = original_cleaned_data['override_url']
+        # Check that any nodes with a duplicate override URL are not just
+        # a published version of this item, in which case we can ignore the
+        # clash. We detect such items using their `tree_id`, which is shared
+        # between draft/published items but not across items.
+        real_url_clash_qs = other_translations \
+            .filter(_cached_url=new_url) \
+            .exclude(master__tree_id=self.instance.tree_id)
+        if not real_url_clash_qs.count():
+            # This is a spurious duplicate error between draft and published
+            # copies of the same page, ignore error and reinstate field data.
+            del self._errors['override_url']
+            cleaned_data['override_url'] = \
+                original_cleaned_data['override_url']
 
     return cleaned_data
 
@@ -137,8 +171,8 @@ def patch_django_17_collector_collect(self, objs, *args, **kwargs):
     for model in [o._meta.model for o in objs]:
         for proxy_ancestor_cls in get_proxy_ancestor_classes(model):
             opts = proxy_ancestor_cls._meta
-            for rel_obj in opts.get_all_related_objects(
-                    local_only=True, include_hidden=True):
+            for rel_obj in get_all_related_objects(
+                    opts, local_only=True, include_hidden=True):
                 rel = rel_obj.field.rel
                 if not rel:
                     continue

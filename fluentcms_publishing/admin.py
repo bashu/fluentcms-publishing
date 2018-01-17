@@ -5,10 +5,12 @@ import django
 from django import forms
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin, SimpleListFilter
+from django.contrib.admin.utils import quote
 from django.conf import settings
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse, NoReverseMatch
+from django.db import transaction
 from django.db.models import F
 from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.utils.encoding import force_text
@@ -23,6 +25,8 @@ from fluent_contents.admin import PlaceholderEditorAdmin
 from fluent_contents.models import PlaceholderData
 
 from .models import PublishingModel
+from .utils import is_automatic_publishing_enabled
+from . import signals as publishing_signals
 
 
 def make_published(modeladmin, request, queryset):
@@ -201,7 +205,10 @@ class PublishingAdminForm(forms.ModelForm):
         instance = self.instance
 
         # work out which fields are unique_together
-        unique_fields_set = instance.get_unique_together()
+        try:
+            unique_fields_set = instance.get_unique_together()
+        except AttributeError:
+            unique_fields_set = ()
 
         if not unique_fields_set:
             return data
@@ -212,7 +219,7 @@ class PublishingAdminForm(forms.ModelForm):
                 field = instance.get_field(unique_field)
 
                 # Get value from the form or the model
-                if field.editable:
+                if field.editable and unique_field in cleaned_data:
                     unique_filter[unique_field] = cleaned_data[unique_field]
                 else:
                     unique_filter[unique_field] = \
@@ -242,10 +249,19 @@ class _PublishingHelpersMixin(object):
     models, and for the "parent" page admins used by Fluent which needs to
     cope with models that may or may not implement our publishing features.
     """
+    actions = ['publish', 'unpublish']
 
     def __init__(self, *args, **kwargs):
         super(_PublishingHelpersMixin, self).__init__(*args, **kwargs)
         self.request = None
+
+    def get_actions(self, request):
+        actions = super(_PublishingHelpersMixin, self).get_actions(request)
+        # Disable publish/unpublish bulk actions if auto-publishing is enabled
+        if is_automatic_publishing_enabled(self.model):
+            actions.pop('publish', None)
+            actions.pop('unpublish', None)
+        return actions
 
     def is_admin_for_publishable_model(self):
         return hasattr(self, 'model') \
@@ -281,12 +297,25 @@ class _PublishingHelpersMixin(object):
         permissions to publish.
         :return: Boolean.
         """
+        # If auto-publishing is enabled, no user has "permission" to publish
+        # because it happens automatically
+        if is_automatic_publishing_enabled(self.model):
+            return False
         user_obj = request.user
         if not user_obj.is_active:
             return False
         if user_obj.is_superuser:
             return True
-        return user_obj.has_perm('%s.can_publish' % self.opts.app_label)
+        # Normal user with `can_publish` permission can always publish
+        if user_obj.has_perm('%s.can_publish' % self.opts.app_label):
+            return True
+        # Normal user with `can_republish` permission can only publish if the
+        # item is already published.
+        if user_obj.has_perm('%s.can_republish' % self.opts.app_label) and \
+                obj and getattr(obj, 'has_been_published', False):
+            return True
+        # User does not meet any publishing permisison requirements; reject!
+        return False
 
     def has_preview_permission(self, request, obj=None):
         """
@@ -351,10 +380,32 @@ class _PublishingHelpersMixin(object):
     publishing_column.allow_tags = True
     publishing_column.short_description = _('Published')
 
+    def publish(self, request, qs):
+        """ Publish bulk action """
+        # Convert polymorphic queryset instances to real ones if/when necessary
+        try:
+            qs = self.model.objects.get_real_instances(qs)
+        except AttributeError:
+            pass
+        for q in qs:
+            if self.has_publish_permission(request, q):
+                q.publish()
 
-class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
+    def unpublish(self, request, qs):
+        """ Unpublish bulk action """
+        # Convert polymorphic queryset instances to real ones if/when necessary
+        try:
+            qs = self.model.objects.get_real_instances(qs)
+        except AttributeError:
+            pass
+        for q in qs:
+            q.unpublish()
+
+
+class PublishingAdmin(_PublishingHelpersMixin, ModelAdmin):
     form = PublishingAdminForm
     list_display = ('publishing_object_title', 'publishing_column', 'publishing_modified_at')
+    list_display_links = ('publishing_object_title', ) # default, but makes it easier to extend
     list_filter = (PublishingStatusFilter, PublishingPublishedFilter)
 
     actions = ['publish', 'unpublish']
@@ -459,18 +510,18 @@ class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
         unpublish_name = '%sunpublish' % (self.get_url_name_prefix(), )
         revert_name = '%srevert' % (self.get_url_name_prefix(), )
 
-        publish_urls = patterns(
-            '',
+        publish_urls = [
             url(r'^(?P<object_id>\d+)/publish/$',
                 self.publish_view, name=publish_name),
             url(r'^(?P<object_id>\d+)/unpublish/$',
                 self.unpublish_view, name=unpublish_name),
             url(r'^(?P<object_id>\d+)/revert/$',
                 self.revert_view, name=revert_name),
-        )
+        ]
 
         return publish_urls + urls
 
+    @transaction.atomic
     def get_model_object(self, request, object_id):
         # Enforce DB-level locking of the object with `select_for_update` to
         # avoid data consistency issues caused by multiple simultaneous form
@@ -535,6 +586,19 @@ class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
             return HttpResponseRedirect(reverse(self.changelist_reverse))
 
         return http_json_response({'success': True})
+
+    def save_related(self, request, form, *args, **kwargs):
+        """
+        Send the signal `publishing_post_save_related` when a draft copy is
+        saved and all its relationships have also been created.
+        """
+        result = super(PublishingAdmin, self) \
+            .save_related(request, form, *args, **kwargs)
+        # Send signal that draft has been saved and all relationships created
+        if form.instance:
+            publishing_signals.publishing_post_save_related.send(
+                sender=type(self), instance=form.instance)
+        return result
 
     def render_change_form(self, request, context, add=False, change=False,
                            form_url='', obj=None):
@@ -672,23 +736,21 @@ class PublishingAdmin(ModelAdmin, _PublishingHelpersMixin):
 
         return response
 
-    def publish(self, request, qs):
-        # Convert polymorphic queryset instances to real ones if/when necessary
-        try:
-            qs = self.model.objects.get_real_instances(qs)
-        except AttributeError:
-            pass
-        for q in qs:
-            q.publish()
+    def response_change(self, request, obj):
+        pk_value = obj._get_pk_val()
 
-    def unpublish(self, request, qs):
-        # Convert polymorphic queryset instances to real ones if/when necessary
-        try:
-            qs = self.model.objects.get_real_instances(qs)
-        except AttributeError:
-            pass
-        for q in qs:
-            q.unpublish()
+        if "_publish" in request.POST:
+            return HttpResponseRedirect(
+                reverse(self.publish_reverse(type(obj)),
+                        args=[quote(pk_value)],
+                        current_app=self.admin_site.name))
+        if "_unpublish" in request.POST:
+            return HttpResponseRedirect(
+                reverse(self.unpublish_reverse(type(obj)),
+                        args=[quote(pk_value)],
+                        current_app=self.admin_site.name))
+
+        return super(PublishingAdmin, self).response_change(request, obj)
 
 
 class PublishingFluentPagesParentAdminMixin(_PublishingHelpersMixin):

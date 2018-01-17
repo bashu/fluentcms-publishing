@@ -1,29 +1,10 @@
 import warnings
 
+import django
 from django.apps import AppConfig, apps
 from django.core.exceptions import MultipleObjectsReturned
 from django.utils.datastructures import OrderedSet
 from django.utils.translation import get_language
-
-from fluent_pages import appsettings
-from fluent_pages.models import UrlNode
-from fluent_pages.models.managers import UrlNodeQuerySet
-
-from polymorphic.models import PolymorphicModel
-
-from mptt.models import MPTTModel
-
-from . import monkey_patches
-from .managers import (
-    PublishingQuerySet,
-    PublishingPolymorphicManager, 
-    PublishingUrlNodeManager,
-    UrlNodeQuerySetWithPublishingFeatures, 
-    _queryset_iterator,
-)
-from .models import PublishingModel
-from .middleware import is_draft_request_context, \
-    override_draft_request_context
 
 
 def monkey_patch_override_method(klass):
@@ -76,7 +57,26 @@ class AppConfig(AppConfig):
             return
         AppConfig.has_run_ready = True
 
+        from fluent_pages import appsettings
+        from fluent_pages.models import UrlNode
+        from fluent_pages.models.managers import UrlNodeQuerySet
         from fluent_pages.templatetags.fluent_pages_tags import register
+        
+        from polymorphic.models import PolymorphicModel
+
+        from mptt.models import MPTTModel
+
+        from . import monkey_patches
+        from .managers import (
+            PublishingIterable,
+            PublishingQuerySet,
+            PublishingPolymorphicManager, 
+            PublishingUrlNodeManager,
+            UrlNodeQuerySetWithPublishingFeatures, 
+            _queryset_iterator,
+        )
+        from .models import PublishingModel
+
         if 'render_menu' in register.tags:
             del register.tags['render_menu']
         if 'render_breadcrumb' in register.tags:
@@ -84,7 +84,8 @@ class AppConfig(AppConfig):
 
         monkey_patches.APPLY_patch_urlnodeadminform_clean_for_publishable_items()
         monkey_patches.APPLY_patch_django_17_collector_collect()
-        monkey_patches.APPLY_patch_django_18_get_candidate_relations_to_delete()
+        if not django.VERSION >= (1, 10):
+            monkey_patches.APPLY_patch_django_18_get_candidate_relations_to_delete()
 
         # Monkey-patch `UrlNodeQuerySet.published` to avoid filtering out draft
         # items when we are in a draft request context when the special-case
@@ -93,6 +94,8 @@ class AppConfig(AppConfig):
         # other cases like when a specially "signed" draft URL is shared.
         @monkey_patch_override_method(UrlNodeQuerySet)
         def published(self, for_user=None):
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             if for_user is not None and is_draft_request_context():
                 return self._single_site()
             else:
@@ -148,6 +151,8 @@ class AppConfig(AppConfig):
                 enforce_single_result=False)
 
         def _filter_candidates_by_published_status(candidates):
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             # Filter candidate results by published status, using
             # instance attributes instead of queryset filtering to
             # handle unpublishable and ICEKit publishing-enabled items.
@@ -194,6 +199,8 @@ class AppConfig(AppConfig):
             Raise `MultipleObjectsReturned` if the list contains multiple
             objects and the `enforce_single_result` argument is set.
             """
+            from fluentcms_publishing.middleware import is_draft_request_context
+
             request_context_desc = \
                 'published' if is_draft_request_context() else 'draft'
             # Check for invalid multiple results if requested
@@ -262,6 +269,8 @@ class AppConfig(AppConfig):
                     # queryset's implementation of `published()` is used
                     descriptor.related_manager_cls.published = \
                         lambda self, **kwargs: self.all().published(**kwargs)
+                    if django.VERSION > (1, 8):
+                        qs_class._iterable_class = PublishingIterable
 
             # Skip any models that don't have publishing features
             if not issubclass(model, PublishingModel):
@@ -303,11 +312,17 @@ class AppConfig(AppConfig):
                     and not issubclass(model, UrlNode):
 
                 _contribute_if_not_subclass('objects', PublishingPolymorphicManager)
-                _contribute_if_not_subclass('_default_manager', PublishingPolymorphicManager)
+                if django.VERSION >= (1, 10):
+                    model._meta.default_manager_name = 'objects'
+                else:
+                    _contribute_if_not_subclass('_default_manager', PublishingPolymorphicManager)
 
             if issubclass(model, UrlNode):
                 _contribute_if_not_subclass('objects', PublishingUrlNodeManager)
-                _contribute_if_not_subclass('_default_manager', PublishingUrlNodeManager)
+                if django.VERSION >= (1, 10):
+                    model._meta.default_manager_name = 'objects'
+                else:
+                    _contribute_if_not_subclass('_default_manager', PublishingUrlNodeManager)
 
                 @monkey_patch_override_method(model)
                 def _make_slug_unique(self, translation):

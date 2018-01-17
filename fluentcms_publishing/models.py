@@ -1,6 +1,8 @@
 from copy import deepcopy
 
+import django
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
@@ -14,7 +16,8 @@ from fluent_contents.models import ContentItemRelation, PlaceholderRelation
 
 from .managers import PublishingManager, PublishingUrlNodeManager
 from .middleware import is_draft_request_context
-from .utils import PublishingException, assert_draft
+from .utils import PublishingException, assert_draft, is_automatic_publishing_enabled
+from .compat import get_m2m_with_model, get_all_related_many_to_many_objects
 from . import signals as publishing_signals
 
 
@@ -23,7 +26,8 @@ class PublishingModel(models.Model):
     Model fields and features to implement publishing.
     """
     objects = PublishingManager()
-    _default_manager = PublishingManager()
+    if not django.VERSION >= (1, 10):
+        _default_manager = PublishingManager()
 
     publishing_linked = models.OneToOneField(
         'self',
@@ -59,8 +63,11 @@ class PublishingModel(models.Model):
 
     class Meta:
         abstract = True
+        if django.VERSION >= (1, 10):
+            default_manager_name = 'objects'
         permissions = (
             ('can_publish', 'Can publish'),
+            ('can_republish', 'Can republish'),
         )
 
     @property
@@ -186,7 +193,7 @@ class PublishingModel(models.Model):
         """
         if self.is_published:
             return self
-        elif self.publishing_linked:
+        elif self.publishing_linked_id:
             return self.publishing_linked
         if is_draft_request_context():
             return self.get_draft()
@@ -216,8 +223,13 @@ class PublishingModel(models.Model):
             obj = self
 
         placeholder_fields = []
-        model_fields = obj.__class__._meta.get_all_field_names()
-        for field in model_fields:
+        try:
+            # Django 1.8+
+            field_names = [f.name for f in obj.__class__._meta.get_fields()]
+        except AttributeError:
+            # Django < 1.8
+            field_names = obj.__class__._meta.get_all_field_names()
+        for field in field_names:
             if field in self.publishing_ignore_fields:
                 continue
 
@@ -417,32 +429,66 @@ class PublishingModel(models.Model):
         See unit tests in ``TestPublishingOfM2MRelationships``.
         """
 
-        def clone_through_model_relationship(src_manager, through_entry,
-                                             dst_obj, rel_obj):
-            if src_manager.through.objects.filter(**{
-                src_manager.source_field_name: dst_obj,
-                src_manager.target_field_name: rel_obj,
-            }).exists():
+        def clone_through_model_relationship(manager, through_entry, dst_obj, rel_obj):
+            dst_obj_filter = build_filter_for_through_field(
+                manager, manager.source_field_name, dst_obj)
+            rel_obj_filter = build_filter_for_through_field(
+                manager, manager.target_field_name, rel_obj)
+            if manager.through.objects \
+                    .filter(**dst_obj_filter) \
+                    .filter(**rel_obj_filter) \
+                    .exists():
                 return
             through_entry.pk = None
-            setattr(through_entry, src_manager.source_field_name, dst_obj)
-            setattr(through_entry, src_manager.target_field_name, rel_obj)
+            setattr(through_entry, manager.source_field_name, dst_obj)
+            setattr(through_entry, manager.target_field_name, rel_obj)
             through_entry.save()
 
-        def delete_through_model_relationship(src_manager, rel_obj):
-            src_manager.through.objects.filter(**{
-                src_manager.source_field_name: src_obj,
-                src_manager.target_field_name: rel_obj,
-            }).delete()
+        def delete_through_model_relationship(manager, src_obj, dst_obj):
+            src_obj_filter = build_filter_for_through_field(
+                manager, manager.source_field_name, src_obj)
+            dst_obj_filter = build_filter_for_through_field(
+                manager, manager.target_field_name, dst_obj)
+            manager.through.objects \
+                .filter(**src_obj_filter) \
+                .filter(**dst_obj_filter) \
+                .delete()
+
+        def build_filter_for_through_field(manager, field_name, obj):
+            # If the field is a `GenericForeignKey` we need to build
+            # a compatible filter dict against the field target's content type
+            # and PK...
+            field = getattr(manager.through, field_name)
+            if isinstance(field, GenericForeignKey):
+                field_filter = {
+                    getattr(field, 'fk_field'): obj.pk,
+                    getattr(field, 'ct_field'):
+                        ContentType.objects.get_for_model(obj)
+                }
+            # ...otherwise standard FK fields can be handled simply
+            else:
+                field_filter = {field_name: obj}
+            return field_filter
 
         def clone(src_manager):
+            if (not hasattr(src_manager, 'source_field_name') or not hasattr(src_manager, 'target_field_name')):
+                raise PublishingException(
+                    "Publishing requires many-to-many managers to have"
+                    " 'source_field_name' and 'target_field_name' attributes"
+                    " with the source and target field names that relate the"
+                    " through model to the ends of the M2M relationship."
+                    " If a non-standard manager does not provide these"
+                    " attributes you must add them."
+                )
+
+            src_obj_source_field_filter = build_filter_for_through_field(
+                src_manager, src_manager.source_field_name, src_obj)
             through_qs = src_manager.through.objects \
-                .filter(**{src_manager.source_field_name: src_obj})
+                .filter(**src_obj_source_field_filter)
             published_rel_objs_maybe_obsolete = []
             current_draft_rel_pks = set()
             for through_entry in through_qs:
-                rel_obj = getattr(
-                    through_entry, src_manager.target_field_name)
+                rel_obj = getattr(through_entry, src_manager.target_field_name)
                 # If the object referenced by the M2M is publishable we only
                 # clone the relationship if it is to a draft copy, not if it is
                 # to a published copy. If it is not a publishable object at
@@ -461,8 +507,8 @@ class PublishingModel(models.Model):
                     else:
                         if rel_obj_published:
                             clone_through_model_relationship(
-                                src_manager, through_entry, src_obj,
-                                rel_obj_published)
+                                src_manager, through_entry,
+                                src_obj, rel_obj_published)
                     # Track IDs of related draft copies, so we can tell later
                     # whether relationshps with published copies are obsolete
                     current_draft_rel_pks.add(rel_obj.pk)
@@ -477,7 +523,7 @@ class PublishingModel(models.Model):
                 draft = published_rel_obj.get_draft()
                 if not draft or draft.pk not in current_draft_rel_pks:
                     delete_through_model_relationship(
-                        src_manager, published_rel_obj)
+                        src_manager, src_obj, published_rel_obj)
 
         # Track the relationship through-tables we have processed to avoid
         # processing the same relationships in both forward and reverse
@@ -493,7 +539,7 @@ class PublishingModel(models.Model):
             seen_rel_through_tables.add(field.rel.through)
 
         # Reverse.
-        for field in src_obj._meta.get_all_related_many_to_many_objects():
+        for field in get_all_related_many_to_many_objects(src_obj._meta):
             # Skip reverse relationship we have already seen
             if field.field.rel.through in seen_rel_through_tables:
                 continue
@@ -580,15 +626,24 @@ class PublishingModel(models.Model):
         content items are maintained for the published (dst) page's content
         items.
         """
-        # NOTE: We assume here that src & dst content item set is the same
-        # number and in the same order: we don't really have a better way
-        # to figure out which destination content item corresponds to which
-        # source content item. Hopefully this assumption holds...
         if not hasattr(self, 'contentitem_set'):
             return
-        for src_ci, dst_ci in zip(self.contentitem_set.all(),
-                                  dst_obj.contentitem_set.all()):
-            for field, __ in src_ci._meta.get_m2m_with_model():
+        # We must explicitly and reliably order both the src and dst content
+        # items here to ensure that we are processing the same logical item for
+        # the draft and published copies. The default `ContentItem` ordering of
+        # ('placeholder', 'sort_order') is not sufficient because it relies on
+        # the placeholder PK remaining static, whereas we clone placeholders to
+        # the published copy and may sometimes clone them with PKs in a
+        # different order.
+        reliable_ordering = [
+            # Group items by owning placeholder using slot name, not PK
+            'placeholder__slot',
+            # Order items correctly within the placeholder grouping
+            'sort_order'
+        ]
+        for src_ci, dst_ci in zip(self.contentitem_set.order_by(*reliable_ordering),
+                                  dst_obj.contentitem_set.order_by(*reliable_ordering)):
+            for field, __ in get_m2m_with_model(src_ci):
                 field_name = field.name
                 src_m2m = getattr(src_ci, field_name)
                 dst_m2m = getattr(dst_ci, field_name)
@@ -621,7 +676,8 @@ class PublishableFluentContentsPage(FluentContentsPage, PublishingModel):
     """
     # TODO Default managers don't apply properly in all cases, not sure why...
     objects = PublishingUrlNodeManager()
-    _default_manager = PublishingUrlNodeManager()
+    if not django.VERSION >= (1, 10):
+        _default_manager = PublishingUrlNodeManager()
 
     # TODO Must re-implement property here, not sure why...
     @property
@@ -643,6 +699,8 @@ class PublishableFluentContentsPage(FluentContentsPage, PublishingModel):
 
     class Meta:
         abstract = True
+        if django.VERSION >= (1, 10):
+            default_manager_name = 'objects'
 
 
 class PublishableFluentContents(PublishingModel):
@@ -704,7 +762,7 @@ def handle_publishable_m2m_changed(
     # Get the right `ManyRelatedManager`. Iterate M2Ms and compare `sender`
     # (the through model), in case there are multiple M2Ms to the same model.
     if reverse:
-        for rel_obj in instance._meta.get_all_related_many_to_many_objects():
+        for rel_obj in get_all_related_many_to_many_objects(instance._meta):
             if rel_obj.field.rel.through == sender:
                 m2m = getattr(instance, rel_obj.get_accessor_name())
                 break
@@ -846,9 +904,10 @@ def delete_published_copy_when_draft_deleted(sender, **kwargs):
 
 
 @receiver(models.signals.post_migrate)
-def create_can_publish_permission(sender, **kwargs):
+def create_can_publish_and_can_republish_permissions(sender, **kwargs):
     """
-    Add `can_publish` permission for each of the publishable model.
+    Add `can_publish` and `can_republish` permissions for each publishable
+    model in the system.
     """
     for model in sender.get_models():
         if not issubclass(model, PublishingModel):
@@ -857,3 +916,28 @@ def create_can_publish_permission(sender, **kwargs):
         permission, created = Permission.objects.get_or_create(
             content_type=content_type, codename='can_publish',
             defaults=dict(name='Can Publish %s' % model.__name__))
+        permission, created = Permission.objects.get_or_create(
+            content_type=content_type, codename='can_republish',
+            defaults=dict(name='Can Republish %s' % model.__name__))
+
+
+@receiver(publishing_signals.publishing_post_save_related)
+def maybe_automatically_publish_drafts_on_save(sender, instance, **kwargs):
+    """
+    If automatic publishing is enabled, immediately publish a draft copy after
+    it has been saved.
+    """
+    # Skip processing if auto-publishing is not enabled
+    if not is_automatic_publishing_enabled(sender):
+        return
+    # Skip missing or unpublishable instances
+    if not instance or not hasattr(instance, 'publishing_linked'):
+        return
+    # Ignore saves of published copies
+    if instance.is_published:
+        return
+    # Ignore saves of already-published draft copies
+    if not instance.is_dirty:
+        return
+    # Immediately publish saved draft copy
+    instance.publish()

@@ -793,7 +793,7 @@ class FluentPagesParentAdminMixin(
             node = node.get_real_instance()
 
         actions = []
-        if self.can_have_children(node):
+        if node.can_have_children:
             actions.append(
                 """<a href="add/?{parent_attr}={id}" title="{title}" class="add-child-object"><img src="{static}polymorphic_tree/icons/page_new.gif" width="16" height="16" alt="{title}" /></a>""".format(parent_attr=self.model._mptt_meta.parent_attr, id=node.pk, title=_('Add sub node'), static=settings.STATIC_URL))
         else:

@@ -22,10 +22,10 @@
   <div class="submit-row">
     {% if has_publish_permission %}
       {% if publish_btn %}
-        <a href="{{ publish_btn }}" class="button default">{% trans 'Publish' %}</a>
+        <input type="submit" value="{% trans 'Publish' %}" class="default" name="_publish" />
       {% endif %}
       {% if unpublish_btn %}
-        <a href="{{ unpublish_btn }}" class="button default">{% trans 'Unpublish' %}</a>
+        <input type="submit" value="{% trans 'Unpublish' %}" class="default" name="_unpublish" />
       {% endif %}
     {% else %}
       <input type="submit" value="{% trans 'Save' %}" class="default" name="_save" />

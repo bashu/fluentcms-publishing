@@ -108,12 +108,8 @@ class TestPublishingAdmin(AdminTest):
                     args=(self.model.pk, )),
             user=self.staff)
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            reverse('admin:fluentcms_publishing_modelm_publish',
-                    args=(self.model.pk, )) in response.text)
-        self.assertFalse(
-            reverse('admin:fluentcms_publishing_modelm_unpublish',
-                    args=(self.model.pk, )) in response.text)
+        self.assertTrue([f for f in response.text.split('\n') if 'submit' in f if '_publish' in f])
+        self.assertFalse([f for f in response.text.split('\n') if 'submit' in f if '_unpublish' in f])
 
         # Publish via admin
         self.admin_publish_item(self.model, user=self.staff)
@@ -128,12 +124,8 @@ class TestPublishingAdmin(AdminTest):
                     args=(self.model.pk, )),
             user=self.staff)
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(
-            reverse('admin:fluentcms_publishing_modelm_publish',
-                    args=(self.model.pk, )) in response.text)
-        self.assertTrue(
-            reverse('admin:fluentcms_publishing_modelm_unpublish',
-                    args=(self.model.pk, )) in response.text)
+        self.assertFalse([f for f in response.text.split('\n') if 'submit' in f if '_publish' in f])
+        self.assertTrue([f for f in response.text.split('\n') if 'submit' in f if '_unpublish' in f])
 
         # Publish again
         self.model.title += ' - changed'
@@ -155,12 +147,8 @@ class TestPublishingAdmin(AdminTest):
                     args=(self.model.pk, )),
             user=self.staff)
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            reverse('admin:fluentcms_publishing_modelm_publish',
-                    args=(self.model.pk, )) in response.text)
-        self.assertFalse(
-            reverse('admin:fluentcms_publishing_modelm_unpublish',
-                    args=(self.model.pk, )) in response.text)
+        self.assertTrue([f for f in response.text.split('\n') if 'submit' in f if '_publish' in f])
+        self.assertFalse([f for f in response.text.split('\n') if 'submit' in f if '_unpublish' in f])
 
 
 class TestPublishingAdminForPage(AdminTest):
@@ -239,10 +227,10 @@ class TestPublishingAdminForPage(AdminTest):
         response = self.app.get(
             self.admin_add_page_url,
             user=self.admin)
-        form = response.forms['page_form']
-        form['ct_id'].select(self.ct.pk)  # Choose Page page type
-        response = form.submit(user=self.admin).follow()
-        self.assertFalse('error' in response.content)
+        #form = response.forms['fluentpage_form']
+        #form['ct_id'].select(self.ct.pk)  # Choose Page page type
+        #response = form.submit(user=self.admin).follow()
+        #self.assertFalse('error' in response.content)
         form = response.forms['fluentpage_form']
         form['layout'].select(self.layout.pk)
         form['title'] = 'O hai, world'
@@ -297,10 +285,10 @@ class TestPublishingAdminForPage(AdminTest):
         response = self.app.get(
             self.admin_add_page_url,
             user=self.admin)
-        form = response.forms['page_form']
-        form['ct_id'].select(self.ct.pk)  # Choose Page page type
-        response = form.submit(user=self.admin).follow()
-        self.assertFalse('error' in response.content)
+        #form = response.forms['fluentpage_form']
+        #form['ct_id'].select(self.ct.pk)  # Choose Page page type
+        #response = form.submit(user=self.admin).follow()
+        #self.assertFalse('error' in response.content)
         form = response.forms['fluentpage_form']
         form['layout'].select(self.layout.pk)
         form['title'] = 'O hai, world!'

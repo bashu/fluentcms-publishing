@@ -40,7 +40,7 @@ setup(
     license='MIT License',
 
     install_requires=[
-        'django-model-publisher>=0.1.4',
+        'django-model-publisher>0.1.5',
         'django-model-settings',
     ],
     requires=[

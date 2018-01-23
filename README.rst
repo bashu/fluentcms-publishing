@@ -10,6 +10,9 @@ fluentcms-publishing
 .. image:: https://img.shields.io/travis/bashu/fluentcms-publishing.svg
     :target: https://travis-ci.org/bashu/fluentcms-publishing/
 
+.. image:: https://landscape.io/github/bashu/fluentcms-publishing/develop/landscape.svg?style=flat
+    :target: https://landscape.io/github/bashu/fluentcms-publishing/develop
+
 Installation
 ============
 

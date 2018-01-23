@@ -50,8 +50,6 @@ INSTALLED_APPS = [
     'model_settings',
     
     'fluent_pages',
-    # 'fluent_pages.pagetypes.flatpage',
-    # 'fluent_pages.pagetypes.textfile',
 
     'mptt',
     'polymorphic',

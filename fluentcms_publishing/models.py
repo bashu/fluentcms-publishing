@@ -380,6 +380,8 @@ class PublishingModel(models.Model):
         draft_obj.save()
         draft_obj.publish()
 
+        return draft_obj
+
     def publishing_prepare_published_copy(self, draft_obj):
         """ Prepare published copy of draft prior to saving it """
         # We call super here, somewhat perversely, to ensure this method will

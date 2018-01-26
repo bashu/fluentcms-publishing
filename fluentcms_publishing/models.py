@@ -359,28 +359,8 @@ class PublishingModel(models.Model):
         """
         Revert draft instance to the last published instance.
         """
-        # TODO: It would be nice if the draft pk did not have to change
-        
-        if not self.publishing_linked:
-            return
-
-        # Get published obj and delete the draft
-        draft_obj = self
-        publish_obj = self.publishing_linked
-
-        draft_obj.publishing_linked = None
-        draft_obj.save()
-        draft_obj.delete()
-
-        # Mark the published object as a draft
-        draft_obj = publish_obj
-        publish_obj = None
-
-        draft_obj.publishing_is_draft = True
-        draft_obj.save()
-        draft_obj.publish()
-
-        return draft_obj
+        raise Exception(
+            "TODO: Re-implement revert-to-public without reversion?")
 
     def publishing_prepare_published_copy(self, draft_obj):
         """ Prepare published copy of draft prior to saving it """

@@ -288,6 +288,11 @@ class _PublishingHelpersMixin(object):
         return '%s:%sunpublish' % (
             self.admin_site.name, self.get_url_name_prefix(model))
 
+    # TODO Cache this
+    def revert_reverse(self, model=None):
+        return '%s:%srevert' % (
+            self.admin_site.name, self.get_url_name_prefix(model))
+
     def has_publish_permission(self, request, obj=None):
         """
         Determines if the user has permissions to publish.
@@ -425,9 +430,6 @@ class PublishingAdmin(_PublishingHelpersMixin, ModelAdmin):
         super(PublishingAdmin, self).__init__(model, admin_site)
 
         # Reverse URL strings used in multiple places..
-        self.revert_reverse = '%s:%srevert' % (
-            self.admin_site.name,
-            self.get_url_name_prefix(model), )
         self.changelist_reverse = '%s:%schangelist' % (
             self.admin_site.name,
             self.get_url_name_prefix(model), )
@@ -654,7 +656,8 @@ class PublishingAdmin(_PublishingHelpersMixin, ModelAdmin):
                 # change back to the published information.
                 revert_btn = None
                 if obj.is_dirty and obj.publishing_linked:
-                    revert_btn = reverse(self.revert_reverse, args=(obj.pk, ))
+                    revert_btn = reverse(
+                        self.revert_reverse(type(obj)), args=(obj.pk, ))
 
                 context.update({
                     'object_url': object_url,
@@ -750,6 +753,11 @@ class PublishingAdmin(_PublishingHelpersMixin, ModelAdmin):
         if "_unpublish" in request.POST:
             return HttpResponseRedirect(
                 reverse(self.unpublish_reverse(type(obj)),
+                        args=[quote(pk_value)],
+                        current_app=self.admin_site.name))
+        if "_revert_to_public" in request.POST:
+            return HttpResponseRedirect(
+                reverse(self.revert_reverse(type(obj)),
                         args=[quote(pk_value)],
                         current_app=self.admin_site.name))
 

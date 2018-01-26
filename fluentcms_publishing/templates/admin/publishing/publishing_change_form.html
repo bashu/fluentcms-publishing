@@ -27,6 +27,9 @@
       {% if unpublish_btn %}
         <input type="submit" value="{% trans 'Unpublish' %}" class="default" name="_unpublish" />
       {% endif %}
+      {% if revert_btn %}
+        <input type="submit" value="{% trans 'Revert to Published' %}" class="default" name="_revert_to_public" />
+      {% endif %}
     {% else %}
       <input type="submit" value="{% trans 'Save' %}" class="default" name="_save" />
     {% endif %}

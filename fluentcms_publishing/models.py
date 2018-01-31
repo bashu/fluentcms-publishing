@@ -256,7 +256,7 @@ class PublishingModel(models.Model):
             # placeholder data and remove the previously linked object.
             # Otherwise set the published date.
             if self.publishing_linked:
-                self.patch_placeholders()
+                self.patch_placeholders(self.publishing_linked)
                 # Unlink draft and published copies then delete published.
                 # NOTE: This indirect dance is necessary to avoid
                 # triggering unwanted MPTT tree structure updates via
@@ -359,28 +359,8 @@ class PublishingModel(models.Model):
         """
         Revert draft instance to the last published instance.
         """
-        # TODO: It would be nice if the draft pk did not have to change
-        
-        if not self.publishing_linked:
-            return
-
-        # Get published obj and delete the draft
-        draft_obj = self
-        publish_obj = self.publishing_linked
-
-        draft_obj.publishing_linked = None
-        draft_obj.save()
-        draft_obj.delete()
-
-        # Mark the published object as a draft
-        draft_obj = publish_obj
-        publish_obj = None
-
-        draft_obj.publishing_is_draft = True
-        draft_obj.save()
-        draft_obj.publish()
-
-        return draft_obj
+        raise Exception(
+            "TODO: Re-implement revert-to-public without reversion?")
 
     def publishing_prepare_published_copy(self, draft_obj):
         """ Prepare published copy of draft prior to saving it """
@@ -575,20 +555,17 @@ class PublishingModel(models.Model):
             or hasattr(self, 'placeholders') \
             or len(self.get_placeholder_fields(Placeholder)) > 0
 
-    @assert_draft
-    def patch_placeholders(self):
+    def patch_placeholders(self, dst_obj):
         if not self.has_placeholder_relationships():
             return
 
-        published_obj = self.publishing_linked
-
-        for draft_placeholder, published_placeholder in zip(
+        for src_placeholder, dst_placeholder in zip(
                 Placeholder.objects.parent(self),
-                Placeholder.objects.parent(published_obj)
+                Placeholder.objects.parent(dst_obj)
         ):
-            if draft_placeholder.pk == published_placeholder.pk:
-                published_placeholder.pk = None
-                published_placeholder.save()
+            if src_placeholder.pk == dst_placeholder.pk:
+                src_placeholder.pk = None
+                src_placeholder.save()
 
     def clone_parler_translations(self, dst_obj):
         """

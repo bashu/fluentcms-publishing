@@ -41,10 +41,10 @@ setup(
 
     install_requires=[
         'django-model-publisher>0.1.5',
-        'django-model-settings',
+        'django-model-settings>0.3',
     ],
     requires=[
-        'Django (>=1.4)',
+        'Django (>=1.8)',
     ],
 
     description='django-fluent-pages meets django-model-publisher',

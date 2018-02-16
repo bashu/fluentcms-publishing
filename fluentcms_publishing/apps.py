@@ -155,7 +155,7 @@ class AppConfig(AppConfig):
 
             # Filter candidate results by published status, using
             # instance attributes instead of queryset filtering to
-            # handle unpublishable and ICEKit publishing-enabled items.
+            # handle unpublishable and fluentcms publishing-enabled items.
             objs = OrderedSet()  # preserve order & remove dupes
             if is_draft_request_context():
                 for candidate in candidates:

@@ -442,7 +442,7 @@ PublishingManager = \
 PublishingManager.use_for_related_fields = True
 def _gqs(self):
     return super(PublishingManager, self).get_queryset().select_related('publishing_linked', 'publishing_draft')
-PublishingManager.get_queryself = _gqs
+PublishingManager.get_queryset = _gqs
 
 
 PublishingPolymorphicManager = \

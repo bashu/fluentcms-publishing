@@ -44,7 +44,7 @@ setup(
         'django-model-settings>0.3',
     ],
     requires=[
-        'Django (>=1.8)',
+        'Django (>=1.11)',
     ],
 
     description='django-fluent-pages meets django-model-publisher',

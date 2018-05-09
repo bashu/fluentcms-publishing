@@ -271,8 +271,8 @@ class TestPublishingModelAndQueryset(TestCase):
         try:
             DraftItemBoobyTrap(self.model.get_published())
             self.fail("Expected ValueError wrapping a published item")
-        except ValueError, ex:
-            self.assertTrue('is not a DRAFT' in ex.message)
+        except ValueError as ex:
+            self.assertTrue('is not a DRAFT' in str(ex))
 
         # Wrap draft item
         wrapper = DraftItemBoobyTrap(self.model)
@@ -305,17 +305,17 @@ class TestPublishingModelAndQueryset(TestCase):
         try:
             wrapper.title
             self.fail("Expected PublishingException")
-        except PublishingException, ex:
+        except PublishingException as ex:
             self.assertTrue(
                 "Illegal attempt to access 'title' on the DRAFT"
-                in ex.message)
+                in str(ex))
         try:
             wrapper.show_title
             self.fail("Expected PublishingException")
-        except PublishingException, ex:
+        except PublishingException as ex:
             self.assertTrue(
                 "Illegal attempt to access 'show_title' on the DRAFT"
-                in ex.message)
+                in str(ex))
 
     def test_queryset_iterator(self):
         self.model.publish()

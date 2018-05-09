@@ -61,7 +61,7 @@ setup(
 
     tests_require=[
         'mock',
-        'django-webtest>1.9,<2.0',
+        'django-webtest>1.9,<2.0,!=1.9.3',
         'django-setuptest',
         'django-dynamic-fixture>=1.9.5,<2.0',
     ],

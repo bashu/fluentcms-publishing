@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import urlparse
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
@@ -255,11 +258,11 @@ class TestPublishingMiddleware(TestCase):
         # codec can't encode character..." exceptions when a unicode location
         # value is provided
         try:
-            verify_draft_url(u"/search/?q=Eugène O'keeffe")
+            verify_draft_url("/search/?q=Eugène O'keeffe")
         except UnicodeEncodeError:
             self.fail("verify_draft_url mishandles non-ASCII unicode text")
         try:
-            get_draft_url(u"/search/?q=Eugène O'keeffe")
+            get_draft_url("/search/?q=Eugène O'keeffe")
         except UnicodeEncodeError:
             self.fail("get_draft_url mishandles non-ASCII unicode text")
 

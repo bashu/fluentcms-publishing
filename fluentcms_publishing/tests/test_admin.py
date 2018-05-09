@@ -207,9 +207,9 @@ class TestPublishingAdminForPage(AdminTest):
         form = response.forms['fluentpage_form']
         form['title'].value = 'O hai, world!'
         response = form.submit('_continue', user=self.admin)
-        self.assertFalse(
-            'This slug is already used by an other page at the same level'
-            in response.content)
+        self.assertNotContains(
+            response, 'This slug is already used by an other page at the same level', status_code=302,
+        )
         self.layoutpage = self.refresh(self.page)
         self.assertEqual('hello-world', self.page.slug)
         self.assertEqual('O hai, world!', self.page.title)
@@ -230,15 +230,15 @@ class TestPublishingAdminForPage(AdminTest):
         form = response.forms['page_form']
         form['ct_id'].select(self.ct.pk)  # Choose Page page type
         response = form.submit(user=self.admin).follow()
-        self.assertFalse('error' in response.content)
+        self.assertNotContains(response, 'error')
         form = response.forms['fluentpage_form']
         form['layout'].select(self.layout.pk)
         form['title'] = 'O hai, world'
         form['slug'] = self.page.slug  # Same slug as existing page
         response = form.submit('_continue', user=self.admin)
-        self.assertTrue(
-            'This slug is already used by an other page at the same level'
-            in response.content)
+        self.assertContains(
+            response, 'This slug is already used by an other page at the same level',
+        )
 
     def test_admin_monkey_patch_override_url_duplicates(self):
         # Test our monkey patch works to fix duplicate `override_url` field
@@ -264,9 +264,9 @@ class TestPublishingAdminForPage(AdminTest):
         form = response.forms['fluentpage_form']
         form['title'].value = 'O hai, world!'
         response = form.submit('_continue', user=self.admin)
-        self.assertFalse(
-            'This URL is already taken by an other page.'
-            in response.content)
+        self.assertNotContains(
+            response, 'This URL is already taken by an other page.', status_code=302,
+        )
         self.page = self.refresh(self.page)
         self.assertEqual('/', self.page.override_url)
         self.assertEqual('O hai, world!', self.page.title)
@@ -288,16 +288,16 @@ class TestPublishingAdminForPage(AdminTest):
         form = response.forms['page_form']
         form['ct_id'].select(self.ct.pk)  # Choose Page page type
         response = form.submit(user=self.admin).follow()
-        self.assertFalse('error' in response.content)
+        self.assertNotContains(response, 'error')
         form = response.forms['fluentpage_form']
         form['layout'].select(self.layout.pk)
         form['title'] = 'O hai, world!'
         form['slug'] = 'o-hai-woorld'
         form['override_url'] = self.page.override_url  # Same override
         response = form.submit('_continue', user=self.admin)
-        self.assertTrue(
-            'This URL is already taken by an other page.'
-            in response.content)
+        self.assertContains(
+            response, 'This URL is already taken by an other page.',
+        )
 
 
 @modify_settings(MIDDLEWARE_CLASSES={'append': 'fluentcms_publishing.middleware.PublishingMiddleware'})

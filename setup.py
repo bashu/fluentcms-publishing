@@ -44,7 +44,7 @@ setup(
         'django-model-settings>0.3',
     ],
     requires=[
-        'Django (>=1.8)',
+        'Django (>=1.11)',
     ],
 
     description='django-fluent-pages meets django-model-publisher',
@@ -61,7 +61,7 @@ setup(
 
     tests_require=[
         'mock',
-        'django-webtest>1.9,<2.0',
+        'django-webtest>1.9,<2.0,!=1.9.3',
         'django-setuptest',
         'django-dynamic-fixture>=1.9.5,<2.0',
     ],
@@ -80,6 +80,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',

@@ -1,0 +1,8 @@
+{% load publishing_tags %}
+{% if breadcrumb %}
+<ul>
+{% for item in breadcrumb %}
+  <li{% if forloop.last %} class="last"{% endif %}><a href="{% if page.is_draft %}{{ item.url|get_draft_url }}{% else %}{{ item.url }}{% endif %}">{{ item.title }}</a></li>
+{% endfor %}
+</ul>
+{% endif %}
